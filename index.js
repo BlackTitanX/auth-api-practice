@@ -11,10 +11,14 @@ const User = require('./Models/userModel.js')
 const app = express();
 
 //Setting mongoose connection
-mongoose.connect(`mongodb+srv://test:${process.env.MONGOPASSWORD}@cluster0.jddfk.mongodb.net/?retryWrites=true&w=majority`,()=>{
-    console.log('Connection to Databe made succesfully')
+const dburl = `mongodb+srv://userTest:JdjRoi5fAlSh4uOO@cluster0.jddfk.mongodb.net/UserDatabase`;
+const connectionsParams = {
+    useNewUrlParser:true,
+    useUnifiedTopology:true
+}
+mongoose.connect(dburl,connectionsParams).then(()=>{
+    console.log('Connected')
 })
-
 // configuring server Middliwares
 env.config();
 const path = process.env.PORT || 3000;
@@ -27,29 +31,67 @@ app.use(cookieParser());
  
 //defined routes
 app.get('/home', authMiddleware,(req, res)=>{
-         console.log(req.user)
+         console.log()
     res.send(`Welcome ${req.user}`);
 })
 
-app.post('/register', (req, res)=>{
+app.post('/register', async (req, res)=>{
+  
+   const userExists = await User.findOne({email: req.body.email})
    
-})
-
-app.post('/login', (req, res)=>{
+   if(userExists){
     
-    const { username, password } = req.body
+    return res.status(400).send('email already exist')
+   }else{
 
-    if(username == user.username && password == user.password){
-        const token = JWT.sign({id:user.id}, "superSecret",{ expiresIn: "1h"} )
+   try{
+        
+        const user = await new User({
+            name:req.body.name,
+            username: req.body.username,
+            email: req.body.email,
+            password: req.body.password
+        });
+        const newUser = await user.save().then((userSaved)=>{
+            console.log(userSaved)
+        })
+        const token = JWT.sign({id:User._id}, "superSecret", {expiresIn:"1h"});
         res.cookie('jwt', token, {
             maxAge: 24 * 60 * 60 * 1000,
-             httpOnly:true
+            httpOnly:true
         });
-      }else{
-        res.status(401).send("Wrong info")
-      }
+        res.send(newUser)
+   }catch(e){
+    res.status(500);
+   }
+}
+})
 
-      res.redirect('/')
+app.post('/login', async (req, res)=>{
+    
+    const { username, password } = req.body
+     
+     try{
+        const userExists = await User.find({username: req.body.username});
+        if(!userExists){
+            return res.status(404).json('user does not exist')
+        }else{
+            
+        const user = await User.find({username:username})
+        console.log(user)
+        if(username == user.username && password == user.password){
+           const token = JWT.sign({id:currentUser._id}, "superSecret",{ expiresIn: "1h"} )
+           res.cookie('jwt', token, {
+               maxAge: 24 * 60 * 60 * 1000,
+                httpOnly:true
+        });
+        }
+        }
+         res.redirect('/home')
+        
+    }catch(e){
+       res.status(500).json('An error has ocurred');
+    }
     
 })
 
