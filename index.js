@@ -78,16 +78,20 @@ app.post('/login', async (req, res)=>{
         }else{
             
         const user = await User.find({username:username})
-        console.log(user)
-        if(username == user.username && password == user.password){
-           const token = JWT.sign({id:currentUser._id}, "superSecret",{ expiresIn: "1h"} )
+        
+        if(username == user[0].username && password == user[0].password){
+            
+           const token = JWT.sign({id:user[0]._id}, "superSecret",{ expiresIn: "1h"} )
            res.cookie('jwt', token, {
                maxAge: 24 * 60 * 60 * 1000,
                 httpOnly:true
         });
+         
+        res.redirect('/home')
         }
+          
         }
-         res.redirect('/home')
+         
         
     }catch(e){
        res.status(500).json('An error has ocurred');
