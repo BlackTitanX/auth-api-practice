@@ -7,9 +7,13 @@ const env = require ('dotenv');
 const authMiddleware = require("./Auth/auth.js");
 const mongoose = require('mongoose')
 const User = require('./Models/userModel.js')
+const fs = require('fs')
+const path = require('path')
+
+
 
 const app = express();
-
+const songLibrary = "Songs"
 //Setting mongoose connection
 const dburl = `mongodb+srv://userTest:JdjRoi5fAlSh4uOO@cluster0.jddfk.mongodb.net/UserDatabase`;
 const connectionsParams = {
@@ -21,20 +25,29 @@ mongoose.connect(dburl,connectionsParams).then(()=>{
 })
 // configuring server Middliwares
 env.config();
-const path = process.env.PORT || 3000;
+const portPath = process.env.PORT || 3000;
 app.use(bodyParser.urlencoded({ extended:true}  ));
 app.use(bodyparser.json()); 
 app.use(cookieParser());
+songsPath = path.join(__dirname, '/Songs')
 
-
+let loggedUser = {};
 
  
 //defined routes
 app.get('/home', authMiddleware,(req, res)=>{
-         console.log()
-    res.send(`Welcome ${req.user}`);
+    
+     const songsArray = fs.readdirSync(songsPath)
+     const formatedSong = [];
+     songsArray.forEach((item)=>{
+       formatedSong.push({name: item, path:`${songsPath}/${item}` })
+     })
+
+     
+    res.json(formatedSong);
 })
 
+// register route
 app.post('/register', async (req, res)=>{
   
    const userExists = await User.findOne({email: req.body.email})
@@ -44,6 +57,7 @@ app.post('/register', async (req, res)=>{
     return res.status(400).send('email already exist')
    }else{
 
+    // creating a new user
    try{
         
         const user = await new User({
@@ -52,6 +66,8 @@ app.post('/register', async (req, res)=>{
             email: req.body.email,
             password: req.body.password
         });
+
+        // saving user on mongo database
         const newUser = await user.save().then((userSaved)=>{
             console.log(userSaved)
         })
@@ -67,8 +83,10 @@ app.post('/register', async (req, res)=>{
 }
 })
 
+// login route 
 app.post('/login', async (req, res)=>{
-    
+     
+    // distructuring request 
     const { username, password } = req.body
      
      try{
@@ -79,14 +97,16 @@ app.post('/login', async (req, res)=>{
             
         const user = await User.find({username:username})
         
+        // verifyin user data with localdatabase
         if(username == user[0].username && password == user[0].password){
-            
+            // signing token 
            const token = JWT.sign({id:user[0]._id}, "superSecret",{ expiresIn: "1h"} )
            res.cookie('jwt', token, {
                maxAge: 24 * 60 * 60 * 1000,
                 httpOnly:true
         });
-         
+         // redirecting to home 
+         loggedUser = {username}
         res.redirect('/home')
         }
           
@@ -104,7 +124,8 @@ app.use((req, res)=>{
     res.status(404).send("we dont know that one 404 error")
 })
 
-app.listen(path, ()=>{
 
-    console.log(`listening on port ${path}`)
+app.listen(portPath, ()=>{
+
+    console.log(`listening on port ${portPath}`)
 })
