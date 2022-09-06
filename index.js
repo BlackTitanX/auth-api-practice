@@ -9,7 +9,7 @@ const mongoose = require('mongoose')
 const User = require('./Models/userModel.js')
 const fs = require('fs')
 const path = require('path')
-
+const jsmediatags = require('jsmediatags');
 
 
 const app = express();
@@ -30,21 +30,34 @@ app.use(bodyParser.urlencoded({ extended:true}  ));
 app.use(bodyparser.json()); 
 app.use(cookieParser());
 songsPath = path.join(__dirname, '/Songs')
-
 let loggedUser = {};
 
- 
+
+
 //defined routes
-app.get('/home', authMiddleware,(req, res)=>{
-    
+app.get('/home', authMiddleware, (req, res)=>{
+
      const songsArray = fs.readdirSync(songsPath)
+
      const formatedSong = [];
+     let metaData ={};
      songsArray.forEach((item)=>{
-       formatedSong.push({name: item, path:`${songsPath}/${item}` })
+        // reads the song meta data and sends a json with the data
+       jsmediatags.read(`${songsPath}/${item}`,{
+             // Important: tags info is only accesible inside jstags funcions
+            onSuccess:(tag)=>{
+                formatedSong.push({name: item, path:`${songsPath}/${item}`,data: tag.tags}) 
+               res.json(formatedSong)
+            },
+            onError:(err)=>{
+                formatedSong.push({name: item, path:`${songsPath}/${item}`,data: err});
+            }
+        })
+       
      })
 
      
-    res.json(formatedSong);
+    
 })
 
 // register route
