@@ -10,7 +10,8 @@ const User = require('./Models/userModel.js')
 const fs = require('fs')
 const path = require('path')
 const jsmediatags = require('jsmediatags');
-
+const cors = require('cors');
+const { METHODS } = require('http');
 
 const app = express();
 const songLibrary = "Songs"
@@ -26,6 +27,14 @@ mongoose.connect(dburl,connectionsParams).then(()=>{
 // configuring server Middliwares
 env.config();
 const portPath = process.env.PORT || 3000;
+app.use(cors({
+
+    origin: 'http://localhost:3000',
+    Credentials: true,
+    methods: 'GET, POST, OPTIONS',
+    allowedHeaders: 'Origin, Content-Type, jwt, Set-Cookie, Authorization, Accept'
+}
+))
 app.use(bodyParser.urlencoded({ extended:true}  ));
 app.use(bodyparser.json()); 
 app.use(cookieParser());
@@ -46,11 +55,11 @@ app.get('/home', authMiddleware, (req, res)=>{
        jsmediatags.read(`${songsPath}/${item}`,{
              // Important: tags info is only accesible inside jstags funcions
             onSuccess:(tag)=>{
-                formatedSong.push({name: item, path:`${songsPath}/${item}`,data: tag.tags}) 
+                formatedSong.push({name: item,data: tag.tags}) 
                res.json(formatedSong)
             },
             onError:(err)=>{
-                formatedSong.push({name: item, path:`${songsPath}/${item}`,data: err});
+                formatedSong.push({name: item,data: err});
             }
         })
        
@@ -58,6 +67,13 @@ app.get('/home', authMiddleware, (req, res)=>{
 
      
     
+})
+
+
+app.get('/song/:name',authMiddleware,(req, res)=>{
+    console.log(req.params.name)
+    fs.createReadStream(`${songsPath}/${req.params.name}`).pipe(res)
+    res.status(200);
 })
 
 // register route
@@ -87,7 +103,8 @@ app.post('/register', async (req, res)=>{
         const token = JWT.sign({id:User._id}, "superSecret", {expiresIn:"1h"});
         res.cookie('jwt', token, {
             maxAge: 24 * 60 * 60 * 1000,
-            httpOnly:true
+            httpOnly:true,
+            isAuthenticated:true
         });
         res.send(newUser)
    }catch(e){
@@ -116,11 +133,12 @@ app.post('/login', async (req, res)=>{
            const token = JWT.sign({id:user[0]._id}, "superSecret",{ expiresIn: "1h"} )
            res.cookie('jwt', token, {
                maxAge: 24 * 60 * 60 * 1000,
-                httpOnly:true
+                httpOnly:true,
+                isAuthenticated:true
         });
          // redirecting to home 
          loggedUser = {username}
-        res.redirect('/home')
+        res.status(200).json('logged in')
         }
           
         }
@@ -134,6 +152,7 @@ app.post('/login', async (req, res)=>{
 
 //404 status
 app.use((req, res)=>{
+    console.log(req.params.name)
     res.status(404).send("we dont know that one 404 error")
 })
 

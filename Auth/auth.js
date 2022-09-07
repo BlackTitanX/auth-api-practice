@@ -4,11 +4,16 @@ const JWT = require("jsonwebtoken");
 const authorization = async (req, res, next)=>{
    const token = req.cookies.jwt;
    if(!token){
-    res.send("you are not logged in");
+    res.status(401).json("you are not logged");
    }else if(token){
       const user = await JWT.verify(token, "superSecret")
+      if(user){
       req.user = user;
       next()
+      }else{
+         res.status(401).json('unathorized')
+      }
+      
 
    }
    
