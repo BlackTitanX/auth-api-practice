@@ -27,14 +27,15 @@ mongoose.connect(dburl,connectionsParams).then(()=>{
 // configuring server Middliwares
 env.config();
 const portPath = process.env.PORT || 3000;
-app.use(cors({
+app.use(cors(
+    {    origin:'http://localhost:3000',
+        credentials:true
 
-    origin: 'http://localhost:3000',
-    Credentials: true,
-    methods: 'GET, POST, OPTIONS',
-    allowedHeaders: 'Origin, Content-Type, jwt, Set-Cookie, Authorization, Accept'
-}
-))
+
+     }
+));
+
+
 app.use(bodyParser.urlencoded({ extended:true}  ));
 app.use(bodyparser.json()); 
 app.use(cookieParser());
@@ -101,12 +102,13 @@ app.post('/register', async (req, res)=>{
             console.log(userSaved)
         })
         const token = JWT.sign({id:User._id}, "superSecret", {expiresIn:"1h"});
+       
         res.cookie('jwt', token, {
             maxAge: 24 * 60 * 60 * 1000,
             httpOnly:true,
             isAuthenticated:true
         });
-        res.send(newUser)
+        res.status(201).json('logged in')
    }catch(e){
     res.status(500);
    }
@@ -118,7 +120,7 @@ app.post('/login', async (req, res)=>{
      
     // distructuring request 
     const { username, password } = req.body
-     
+      console.log(username, password)
      try{
         const userExists = await User.find({username: req.body.username});
         if(!userExists){
@@ -131,14 +133,15 @@ app.post('/login', async (req, res)=>{
         if(username == user[0].username && password == user[0].password){
             // signing token 
            const token = JWT.sign({id:user[0]._id}, "superSecret",{ expiresIn: "1h"} )
-           res.cookie('jwt', token, {
-               maxAge: 24 * 60 * 60 * 1000,
-                httpOnly:true,
-                isAuthenticated:true
-        });
+          
          // redirecting to home 
          loggedUser = {username}
-        res.status(200).json('logged in')
+           res.cookie('jwt', token, {
+            maxAge: 24 * 60 * 60 * 1000,
+             httpOnly:true,
+             isAuthenticated:true
+             });
+             res.status(201).json('Logged in')
         }
           
         }
